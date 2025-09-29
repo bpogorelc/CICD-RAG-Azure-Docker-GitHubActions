@@ -1,6 +1,6 @@
 azure-core==1.35.1
 azure-identity==1.15.0
-azure-search-documents==11.4.0b8
+azure-search-documents==11.4.0
 openai==1.109.1
 python-dotenv==1.0.0
 fastapi==0.108.0
