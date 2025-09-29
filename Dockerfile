@@ -1,13 +1,16 @@
-FROM python:3.10
+FROM python:3.10-slim
 
-COPY ./requirements.txt /webapp/requirements.txt
+WORKDIR /code
 
-WORKDIR /webapp
+# Copy requirements first for better caching
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-RUN pip install -r requirements.txt
+# Copy application code
+COPY webapp/ ./webapp/
 
-COPY webapp/* /webapp
+# Expose port
+EXPOSE 80
 
-ENTRYPOINT [ "uvicorn" ]
-
-CMD [ "--host", "0.0.0.0", "main:app" ]
+# Run the application
+CMD ["uvicorn", "webapp.main:app", "--host", "0.0.0.0", "--port", "80"]
