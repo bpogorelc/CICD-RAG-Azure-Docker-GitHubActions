@@ -51,7 +51,7 @@ jobs:
               --image ghcr.io/bpogorelc/cicd-rag-azure-docker-githubactions:${{ github.sha }} \
               --set-env-vars \
                 OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
-                SEARCH_SERVICE_API_KEY="${{ secrets.SEARCH_SERVICE_API_KEY }}" \
+                SEARCH_API_KEY="${{ secrets.SEARCH_SERVICE_API_KEY }}" \
                 SEARCH_SERVICE_NAME="https://demo-bogdan-search.search.windows.net" \
                 SEARCH_INDEX_NAME="demo-index" \
                 API_KEY="${{ secrets.API_KEY }}" \
