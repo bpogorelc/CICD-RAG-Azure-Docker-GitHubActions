@@ -1,7 +1,8 @@
 from fastapi import FastAPI, HTTPException, Depends, Header, Request
 from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
+# Remove this line - causing redirect loop with Azure Container Apps
+# from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel
 from typing import Optional
@@ -22,8 +23,8 @@ app = FastAPI(
 )
 
 # 🔒 SECURITY MIDDLEWARE IMPLEMENTATION
-# Force HTTPS redirects
-app.add_middleware(HTTPSRedirectMiddleware)
+# Remove HTTPSRedirectMiddleware - Azure Container Apps handles HTTPS redirect
+# app.add_middleware(HTTPSRedirectMiddleware)  # COMMENTED OUT
 
 # Trusted host validation
 app.add_middleware(
@@ -64,7 +65,7 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
     
     # Custom security info header
-    response.headers["X-Security-Features"] = "HTTPS-Enforced,HSTS-Enabled,SSL-Termination"
+    response.headers["X-Security-Features"] = "HTTPS-Enforced-By-Azure,HSTS-Enabled,SSL-Termination"
     
     return response
 
@@ -177,7 +178,7 @@ async def root():
         "message": "🔒 Secure Wine RAG API is running with HTTPS/SSL!", 
         "status": "healthy",
         "security": {
-            "https_enforced": True,
+            "https_enforced": "Azure Container Apps handles HTTPS redirect",
             "ssl_termination": "Azure Container Apps",
             "security_headers": "enabled",
             "api_authentication": "enabled" if os.getenv("API_KEY") else "disabled"
@@ -189,9 +190,9 @@ async def health_check():
     """Public health check endpoint"""
     return {
         "status": "healthy",
-        "security_status": "🔒 HTTPS/SSL Enabled",
+        "security_status": "🔒 HTTPS/SSL Enabled by Azure Container Apps",
         "ssl_info": {
-            "https_enforced": True,
+            "https_enforced": "Azure Container Apps handles HTTPS redirect automatically",
             "hsts_enabled": True,
             "ssl_termination": "Azure Container Apps manages SSL certificates",
             "security_headers": "Custom security headers implemented"
@@ -234,11 +235,5 @@ async def ask_question_public(request: ChatRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    # For local development with SSL
-    uvicorn.run(
-        app, 
-        host="0.0.0.0", 
-        port=8000,
-        ssl_keyfile="./cert/key.pem" if os.path.exists("./cert/key.pem") else None,
-        ssl_certfile="./cert/cert.pem" if os.path.exists("./cert/cert.pem") else None
-    )
+    # For local development
+    uvicorn.run(app, host="0.0.0.0", port=8000)
