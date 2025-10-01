@@ -1,8 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends, Header, Request
 from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
-# Remove this line - causing redirect loop with Azure Container Apps
-# from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel
 from typing import Optional
@@ -23,9 +21,6 @@ app = FastAPI(
 )
 
 # 🔒 SECURITY MIDDLEWARE IMPLEMENTATION
-# Remove HTTPSRedirectMiddleware - Azure Container Apps handles HTTPS redirect
-# app.add_middleware(HTTPSRedirectMiddleware)  # COMMENTED OUT
-
 # Trusted host validation
 app.add_middleware(
     TrustedHostMiddleware, 
@@ -33,7 +28,7 @@ app.add_middleware(
         "rg1.bravesand-0daa5720.eastus.azurecontainerapps.io", 
         "localhost", 
         "127.0.0.1",
-        "*.azurecontainerapps.io"  # Allow Azure Container Apps domains
+        "*.azurecontainerapps.io"
     ]
 )
 
@@ -69,14 +64,21 @@ async def add_security_headers(request: Request, call_next):
     
     return response
 
-# 🔐 API KEY AUTHENTICATION
+# 🔐 API KEY AUTHENTICATION - FIXED VERSION
 async def verify_api_key(x_api_key: Optional[str] = Header(None, alias="X-API-Key")):
     """Verify API key for secure access to protected endpoints"""
     expected_api_key = os.getenv("API_KEY")
     
-    # Skip API key check if not configured (for development)
+    # Force API key requirement in production
     if not expected_api_key:
-        return True
+        if os.getenv("ENVIRONMENT") == "production":
+            raise HTTPException(
+                status_code=500,
+                detail="Server misconfiguration: API key not configured"
+            )
+        else:
+            # Development mode - skip API key check
+            return True
     
     if not x_api_key or x_api_key != expected_api_key:
         raise HTTPException(
@@ -205,6 +207,20 @@ async def health_check():
             "SEARCH_API_KEY": "set" if os.getenv("SEARCH_API_KEY") else "missing",
             "SEARCH_INDEX_NAME": os.getenv("SEARCH_INDEX_NAME", "not set"),
             "API_KEY_CONFIGURED": "yes" if os.getenv("API_KEY") else "no"
+        }
+    }
+
+@app.get("/security-test")
+async def security_test():
+    """Test endpoint to verify security configuration"""
+    return {
+        "api_key_in_env": "yes" if os.getenv("API_KEY") else "no",
+        "api_key_value": os.getenv("API_KEY", "NOT_SET")[:10] + "..." if os.getenv("API_KEY") else "NOT_SET",
+        "environment": os.getenv("ENVIRONMENT", "NOT_SET"),
+        "all_env_vars": {
+            key: "***" if "key" in key.lower() or "secret" in key.lower() else value 
+            for key, value in os.environ.items() 
+            if key.startswith(("API_", "OPENAI_", "SEARCH_", "ENVIRONMENT"))
         }
     }
 
